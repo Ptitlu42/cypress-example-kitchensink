@@ -35,254 +35,175 @@ jobs:
 
       - name: Run Cucumber/Gherkin tests
         run: |
-          echo "Running Cucumber tests..."
-          npx cypress run --spec "cypress/e2e/**/*.feature" --reporter cypress-mochawesome-reporter || echo "Cucumber tests failed or no feature files found"
+          echo "=== Running Cucumber tests ==="
+          echo "Looking for feature files:"
+          find cypress/e2e -name "*.feature" -type f || echo "No .feature files found"
+          
+          echo "Running Cypress with Cucumber:"
+          npx cypress run --spec "cypress/e2e/**/*.feature" --reporter cypress-mochawesome-reporter --reporter-options reportDir=cypress/cucumber-json,reportFilename=cucumber-results.json || echo "Cucumber tests execution completed with errors"
+          
+          echo "Checking results:"
+          ls -la cypress/ || echo "No cypress directory"
+          ls -la cypress/cucumber-json/ || echo "No cucumber-json directory"
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate Cucumber HTML report
         run: |
-          echo "Generating Cucumber report..."
-          npm run generate:cucumber-report || echo "Cucumber report generation failed"
+          echo "=== Generating Cucumber HTML report ==="
+          echo "Current directory contents:"
+          ls -la
+          
+          echo "Cypress directory contents:"
+          ls -la cypress/ || echo "No cypress directory"
+          
+          echo "Running report generation:"
+          npm run generate:cucumber-report || echo "Report generation failed"
+          
+          echo "Checking generated reports:"
+          ls -la cypress/reports/ || echo "No reports directory"
         continue-on-error: true
 
-      - name: Create comprehensive single-page report
+      - name: Create simple working report
         run: |
+          echo "=== Creating comprehensive report ==="
           mkdir -p cypress/reports
           
-          echo "Creating comprehensive report..."
-          
-          # Simple content variables
-          JSON_FILES=""
-          if [ -d "cypress/cucumber-json" ]; then
-            JSON_FILES=$(find cypress/cucumber-json -name "*.json" 2>/dev/null | head -5)
+          # Backup any existing Mochawesome report
+          if [ -f "cypress/reports/index.html" ]; then
+            cp cypress/reports/index.html cypress/reports/mochawesome-backup.html
+            echo "Backed up existing Mochawesome report"
           fi
           
-          # Create a working page
+          # Create a simple but functional report
           cat > cypress/reports/index.html << 'EOF'
           <!DOCTYPE html>
-          <html>
+          <html lang="en">
           <head>
-              <title>Cypress Test Reports Dashboard</title>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Cypress Test Reports</title>
               <style>
-                  * { margin: 0; padding: 0; box-sizing: border-box; }
-                  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; line-height: 1.6; }
-                  .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 20px; text-align: center; }
-                  .header h1 { font-size: 2.5em; margin-bottom: 10px; }
-                  .header .subtitle { font-size: 1.2em; opacity: 0.9; }
-                  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-                  .section { background: white; margin: 30px 0; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; }
-                  .section-header { background: #34495e; color: white; padding: 20px; font-size: 1.4em; display: flex; align-items: center; }
-                  .section-content { padding: 30px; }
-                  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin: 20px 0; }
-                  .stat { text-align: center; padding: 20px; border-radius: 10px; color: white; font-weight: bold; }
-                  .stat h3 { font-size: 2em; margin-bottom: 5px; }
-                  .stat.total { background: #3498db; }
-                  .stat.passed { background: #2ecc71; }
-                  .stat.failed { background: #e74c3c; }
-                  .stat.skipped { background: #f39c12; }
-                  .artifact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-                  .artifact-item { padding: 20px; background: #f8f9fa; border-radius: 10px; text-align: center; border: 2px solid #e9ecef; transition: all 0.3s; }
-                  .artifact-item:hover { border-color: #007bff; transform: translateY(-2px); }
-                  .artifact-item h4 { margin-bottom: 10px; color: #2c3e50; }
-                  .artifact-link { display: inline-block; padding: 12px 24px; background: #007bff; color: white; text-decoration: none; border-radius: 6px; margin: 5px; cursor: pointer; border: none; }
-                  .artifact-link:hover { background: #0056b3; }
-                  .no-data { text-align: center; color: #6c757d; padding: 40px; font-style: italic; background: #f8f9fa; border-radius: 8px; }
-                  
-                  /* Dialog styles */
-                  dialog { border: none; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-width: 90vw; max-height: 90vh; padding: 0; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: 0; }
-                  dialog::backdrop { background: rgba(0,0,0,0.7); }
-                  .dialog-header { background: #34495e; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
-                  .dialog-title { font-size: 1.4em; font-weight: bold; }
-                  .dialog-close { background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 1.2em; }
-                  .dialog-close:hover { background: #c0392b; }
-                  .dialog-content { padding: 20px; max-height: 70vh; overflow-y: auto; }
-                  .json-content { background: #2d3748; color: #e2e8f0; padding: 20px; border-radius: 8px; font-family: 'Courier New', monospace; white-space: pre-wrap; font-size: 12px; max-height: 60vh; overflow-y: auto; }
-                  .iframe-container { width: 100%; height: 80vh; }
-                  .iframe-container iframe { width: 100%; height: 100%; border: none; }
-                  .feature, .scenario, .step { margin: 10px 0; padding: 10px; border-radius: 5px; }
-                  .feature { background: #ecf0f1; border-left: 4px solid #34495e; }
-                  .scenario.passed { background: #d5f4e6; border-left: 4px solid #2ecc71; }
-                  .scenario.failed { background: #fdf2f2; border-left: 4px solid #e74c3c; }
-                  .step.passed { background: #c8e6c9; }
-                  .step.failed { background: #ffcdd2; }
+                  body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+                  .header { background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+                  .header h1 { margin: 0; }
+                  .section { background: white; margin: 20px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                  .section h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+                  .debug { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
+                  .button { background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+                  .button:hover { background: #2980b9; }
+                  .no-data { color: #7f8c8d; font-style: italic; }
               </style>
           </head>
           <body>
               <div class="header">
-                  <h1>🧪 Cypress Test Reports</h1>
-                  <div class="subtitle">Comprehensive test results and artifacts</div>
+                  <h1>🧪 Cypress Test Reports Dashboard</h1>
+                  <p>Generated on: $(date)</p>
               </div>
               
-              <div class="container">
-                  <div class="section">
-                      <div class="section-header">📊 Test Summary</div>
-                      <div class="section-content">
-                          <div class="stats">
-                              <div class="stat total">
-                                  <h3 id="total-tests">0</h3>
-                                  <p>Total Tests</p>
-                              </div>
-                              <div class="stat passed">
-                                  <h3 id="passed-tests">0</h3>
-                                  <p>Passed</p>
-                              </div>
-                              <div class="stat failed">
-                                  <h3 id="failed-tests">0</h3>
-                                  <p>Failed</p>
-                              </div>
-                              <div class="stat skipped">
-                                  <h3 id="skipped-tests">0</h3>
-                                  <p>Skipped</p>
-                              </div>
-                          </div>
-                      </div>
+              <div class="section">
+                  <h2>📊 Environment Information</h2>
+                  <div class="debug">
+          Working Directory: $(pwd)
+          
+          Cypress Directory Structure:
+          $(ls -la cypress/ 2>/dev/null || echo "No cypress directory found")
+          
+          Cucumber JSON Directory:
+          $(ls -la cypress/cucumber-json/ 2>/dev/null || echo "No cucumber-json directory found")
+          
+          Reports Directory:
+          $(ls -la cypress/reports/ 2>/dev/null || echo "No reports directory found")
+          
+          Package.json Scripts:
+          $(grep -A 5 -B 5 cucumber package.json 2>/dev/null || echo "No cucumber scripts found")
                   </div>
-                  
-                  <div class="section">
-                      <div class="section-header">🥒 Cucumber/Gherkin Test Results</div>
-                      <div class="section-content" id="cucumber-content">
+              </div>
+              
+              <div class="section">
+                  <h2>🥒 Cucumber Test Results</h2>
+                  <div id="cucumber-results">
           EOF
           
-          # Add Cucumber content directly
+          # Check for Cucumber results and add them
           if [ -f "cypress/reports/cucumber-report.html" ]; then
-            echo "                          <p>✅ Cucumber report found and integrated</p>" >> cypress/reports/index.html
-            # Extract meaningful content
-            grep -A 100 '<div class="stats">' cypress/reports/cucumber-report.html 2>/dev/null | head -50 >> cypress/reports/index.html || echo "                          <p>Report content extraction failed</p>" >> cypress/reports/index.html
+            echo "                      <p>✅ Cucumber HTML report found</p>" >> cypress/reports/index.html
+            echo "                      <button class=\"button\" onclick=\"showCucumberReport()\">View Cucumber Report</button>" >> cypress/reports/index.html
           else
-            cat >> cypress/reports/index.html << 'EOF'
-                          <div class="no-data">
-                              No Cucumber test results found. This could be because:<br>
-                              • No .feature files were found in cypress/e2e/<br>
-                              • Tests failed to execute<br>
-                              • Report generation encountered an error
-                          </div>
-          EOF
+            echo "                      <p class=\"no-data\">❌ No Cucumber HTML report found</p>" >> cypress/reports/index.html
           fi
           
-          cat >> cypress/reports/index.html << 'EOF'
-                      </div>
-                  </div>
-                  
-                  <div class="section">
-                      <div class="section-header">📹 Test Artifacts & Reports</div>
-                      <div class="section-content">
-                          <div class="artifact-grid">
-                              <div class="artifact-item">
-                                  <h4>📄 JSON Reports</h4>
-                                  <p>Raw Cucumber JSON test data</p>
-                                  <button class="artifact-link" onclick="showJsonReports()">View JSON Data</button>
-                              </div>
-                              <div class="artifact-item">
-                                  <h4>📋 Mochawesome Report</h4>
-                                  <p>Complete Cypress test report</p>
-                                  <button class="artifact-link" onclick="showMochawesome()">View Report</button>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              
-              <div style="text-align: center; color: #6c757d; margin: 30px 0; font-style: italic; padding: 20px; background: white; border-radius: 10px;">
-                  📅 Report generated: $(date)<br>
-                  🔄 Build: GitHub Actions
-              </div>
-              
-              <!-- Dialogs -->
-              <dialog id="json-dialog">
-                  <div class="dialog-header">
-                      <span class="dialog-title">📄 JSON Reports</span>
-                      <button class="dialog-close" onclick="closeDialog('json-dialog')">&times;</button>
-                  </div>
-                  <div class="dialog-content">
-                      <div id="json-content">
-                          <div class="no-data">Loading JSON reports...</div>
-                      </div>
-                  </div>
-              </dialog>
-              
-              <dialog id="mochawesome-dialog">
-                  <div class="dialog-header">
-                      <span class="dialog-title">📋 Mochawesome Report</span>
-                      <button class="dialog-close" onclick="closeDialog('mochawesome-dialog')">&times;</button>
-                  </div>
-                  <div class="dialog-content">
-                      <div class="iframe-container">
-                          <div id="mochawesome-content">
-                              <div class="no-data">Mochawesome report will be displayed here</div>
-                          </div>
-                      </div>
-                  </div>
-              </dialog>
-              
-              <script>
-                  function showDialog(dialogId) {
-                      const dialog = document.getElementById(dialogId);
-                      if (dialog && dialog.showModal) {
-                          dialog.showModal();
-                      } else {
-                          alert('Dialog not supported in this browser');
-                      }
-                  }
-                  
-                  function closeDialog(dialogId) {
-                      document.getElementById(dialogId).close();
-                  }
-                  
-                  function showJsonReports() {
-          EOF
-          
-          # Add JSON content inline with proper escaping
-          echo "            let jsonData = 'Available JSON files:\\n';" >> cypress/reports/index.html
+          # Check for JSON files
           if [ -d "cypress/cucumber-json" ] && [ "$(ls -A cypress/cucumber-json 2>/dev/null)" ]; then
+            echo "                      <p>✅ Cucumber JSON files found:</p>" >> cypress/reports/index.html
+            echo "                      <ul>" >> cypress/reports/index.html
             for file in cypress/cucumber-json/*.json; do
               if [ -f "$file" ]; then
-                echo "            jsonData += '=== $(basename "$file") ===\\n';" >> cypress/reports/index.html
-                echo "            jsonData += '$(cat "$file" 2>/dev/null | head -20 | tr '\n' ' ' | sed 's/"/\\"/g')...\\n\\n';" >> cypress/reports/index.html
+                echo "                          <li>$(basename "$file") ($(wc -c < "$file") bytes)</li>" >> cypress/reports/index.html
               fi
             done
+            echo "                      </ul>" >> cypress/reports/index.html
+            echo "                      <button class=\"button\" onclick=\"showJsonData()\">View JSON Data</button>" >> cypress/reports/index.html
           else
-            echo "            jsonData += 'No JSON files found in cypress/cucumber-json';" >> cypress/reports/index.html
+            echo "                      <p class=\"no-data\">❌ No Cucumber JSON files found</p>" >> cypress/reports/index.html
           fi
           
           cat >> cypress/reports/index.html << 'EOF'
-                      document.getElementById('json-content').innerHTML = `
-                          <div class="json-content">${jsonData}</div>
-                      `;
-                      showDialog('json-dialog');
+                  </div>
+              </div>
+              
+              <div class="section">
+                  <h2>📋 Mochawesome Report</h2>
+                  <div id="mochawesome-results">
+          EOF
+          
+          if [ -f "cypress/reports/mochawesome-backup.html" ]; then
+            echo "                      <p>✅ Mochawesome report available</p>" >> cypress/reports/index.html
+            echo "                      <button class=\"button\" onclick=\"showMochawesome()\">View Mochawesome Report</button>" >> cypress/reports/index.html
+          else
+            echo "                      <p class=\"no-data\">❌ No Mochawesome report found</p>" >> cypress/reports/index.html
+          fi
+          
+          cat >> cypress/reports/index.html << 'EOF'
+                  </div>
+              </div>
+              
+              <div class="section">
+                  <h2>🐛 Debug Information</h2>
+                  <div class="debug">
+          File System Check:
+          $(find . -name "*.feature" -type f 2>/dev/null || echo "No .feature files found")
+          
+          $(find . -name "*.json" -path "*/cucumber*" -type f 2>/dev/null || echo "No cucumber JSON files found")
+          
+          Environment Variables:
+          NODE_VERSION: $(node --version 2>/dev/null || echo "Not available")
+          NPM_VERSION: $(npm --version 2>/dev/null || echo "Not available")
+          CYPRESS_VERSION: $(npx cypress --version 2>/dev/null || echo "Not available")
+                  </div>
+              </div>
+              
+              <script>
+                  function showCucumberReport() {
+                      window.open('cucumber-report.html', '_blank');
                   }
                   
                   function showMochawesome() {
-          EOF
-          
-          # Add Mochawesome content
-          if [ -f "cypress/reports/index.html.bak" ]; then
-            echo "            document.getElementById('mochawesome-content').innerHTML = '<iframe src=\"data:text/html;base64,$(base64 -w 0 cypress/reports/index.html.bak)\" style=\"width:100%;height:100%;border:none;\"></iframe>';" >> cypress/reports/index.html
-          else
-            echo "            document.getElementById('mochawesome-content').innerHTML = '<div class=\"no-data\">No Mochawesome report found</div>';" >> cypress/reports/index.html
-          fi
-          
-          cat >> cypress/reports/index.html << 'EOF'
-                      showDialog('mochawesome-dialog');
+                      window.open('mochawesome-backup.html', '_blank');
                   }
                   
-                  // Auto-update stats on load
-                  window.onload = function() {
-                      // Set basic stats
-                      document.getElementById('total-tests').textContent = '1';
-                      document.getElementById('passed-tests').textContent = '1';
-                      document.getElementById('failed-tests').textContent = '0';
-                      document.getElementById('skipped-tests').textContent = '0';
+                  function showJsonData() {
+                      alert('JSON files are available in the cucumber-json directory. Check the debug section for file details.');
                   }
               </script>
           </body>
           </html>
           EOF
           
-          echo "Report generation completed"
+          echo "=== Report creation completed ==="
+          echo "Generated report contents:"
+          ls -la cypress/reports/
 
       - name: Remove intermediate step
         run: echo "Single page report created successfully"
