@@ -11,3 +11,5 @@ cypress/reports
 .vscode
 env
 .DS_Store
+test-page-generation.sh
+cypress/cucumber-json/test.json

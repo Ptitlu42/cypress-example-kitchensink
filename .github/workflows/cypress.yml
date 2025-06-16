@@ -52,8 +52,29 @@ jobs:
             mv cypress/reports/index.html cypress/reports/mochawesome-original.html
           fi
           
-          # Create comprehensive single page report with embedded content
-          cat > cypress/reports/index.html << 'EOF'
+          # Read JSON content for embedding
+          JSON_CONTENT=""
+          if [ -d "cypress/cucumber-json" ] && [ "$(ls -A cypress/cucumber-json 2>/dev/null)" ]; then
+            for file in cypress/cucumber-json/*.json; do
+              if [ -f "$file" ]; then
+                JSON_CONTENT="${JSON_CONTENT}=== $(basename "$file") ===\n\n"
+                JSON_CONTENT="${JSON_CONTENT}$(cat "$file" | jq . 2>/dev/null || cat "$file")\n\n"
+              fi
+            done
+          else
+            JSON_CONTENT="No JSON files found"
+          fi
+          
+          # Read Mochawesome content
+          MOCHAWESOME_CONTENT=""
+          if [ -f "cypress/reports/mochawesome-original.html" ]; then
+            MOCHAWESOME_CONTENT=$(cat cypress/reports/mochawesome-original.html | sed 's/"/\&quot;/g' | sed 's/\\/\\\\/g')
+          else
+            MOCHAWESOME_CONTENT="<html><body><h1>No Mochawesome Report Found</h1><p>The Mochawesome report was not generated.</p></body></html>"
+          fi
+          
+          # Create the comprehensive report
+          cat > cypress/reports/index.html << EOF
           <!DOCTYPE html>
           <html>
           <head>
@@ -81,26 +102,12 @@ jobs:
                   .stat.passed { background: #2ecc71; }
                   .stat.failed { background: #e74c3c; }
                   .stat.skipped { background: #f39c12; }
-                  .feature { margin: 20px 0; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
-                  .feature-header { background: #ecf0f1; padding: 15px; font-weight: bold; color: #2c3e50; }
-                  .scenario { padding: 15px; border-bottom: 1px solid #eee; }
-                  .scenario:last-child { border-bottom: none; }
-                  .scenario.passed { background: #d5f4e6; border-left: 4px solid #2ecc71; }
-                  .scenario.failed { background: #fdf2f2; border-left: 4px solid #e74c3c; }
-                  .scenario h4 { margin-bottom: 10px; color: #2c3e50; }
-                  .steps { margin: 10px 0; }
-                  .step { padding: 8px 15px; margin: 3px 0; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 0.9em; }
-                  .step.passed { background: #c8e6c9; border-left: 3px solid #2ecc71; }
-                  .step.failed { background: #ffcdd2; border-left: 3px solid #e74c3c; }
-                  .step.skipped { background: #fff3cd; border-left: 3px solid #f39c12; }
-                  .step-keyword { font-weight: bold; color: #2c3e50; }
                   .artifact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
                   .artifact-item { padding: 20px; background: #f8f9fa; border-radius: 10px; text-align: center; border: 2px solid #e9ecef; transition: all 0.3s; }
                   .artifact-item:hover { border-color: #007bff; transform: translateY(-2px); }
                   .artifact-item h4 { margin-bottom: 10px; color: #2c3e50; }
                   .artifact-link { display: inline-block; padding: 12px 24px; background: #007bff; color: white; text-decoration: none; border-radius: 6px; margin: 5px; transition: all 0.3s; cursor: pointer; border: none; }
                   .artifact-link:hover { background: #0056b3; transform: translateY(-1px); }
-                  .timestamp { text-align: center; color: #6c757d; margin: 30px 0; font-style: italic; padding: 20px; background: white; border-radius: 10px; }
                   .no-data { text-align: center; color: #6c757d; padding: 40px; font-style: italic; background: #f8f9fa; border-radius: 8px; }
                   .collapsible { cursor: pointer; }
                   .collapsible:hover { background: #2c3e50; }
@@ -108,7 +115,7 @@ jobs:
                   .content.collapsed { display: none; }
                   
                   /* Dialog styles */
-                  dialog { border: none; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-width: 90vw; max-height: 90vh; padding: 0; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+                  dialog { border: none; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-width: 90vw; max-height: 90vh; padding: 0; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: 0; }
                   dialog::backdrop { background: rgba(0,0,0,0.7); }
                   dialog[open] { display: block; }
                   .dialog-header { background: #34495e; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -116,10 +123,6 @@ jobs:
                   .dialog-close { background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 1.2em; }
                   .dialog-close:hover { background: #c0392b; }
                   .dialog-content { padding: 20px; max-height: 70vh; overflow-y: auto; }
-                  .file-list { list-style: none; }
-                  .file-list li { padding: 10px; margin: 5px 0; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff; }
-                  .file-list a { color: #007bff; text-decoration: none; }
-                  .file-list a:hover { text-decoration: underline; }
                   .json-content { background: #2d3748; color: #e2e8f0; padding: 20px; border-radius: 8px; font-family: 'Courier New', monospace; white-space: pre-wrap; font-size: 12px; max-height: 60vh; overflow-y: auto; }
                   .iframe-container { width: 100%; height: 80vh; }
                   .iframe-container iframe { width: 100%; height: 100%; border: none; }
@@ -137,19 +140,19 @@ jobs:
                       <div class="section-content">
                           <div class="stats">
                               <div class="stat total">
-                                  <h3 id="total-tests">-</h3>
+                                  <h3 id="total-tests">0</h3>
                                   <p>Total Tests</p>
                               </div>
                               <div class="stat passed">
-                                  <h3 id="passed-tests">-</h3>
+                                  <h3 id="passed-tests">0</h3>
                                   <p>Passed</p>
                               </div>
                               <div class="stat failed">
-                                  <h3 id="failed-tests">-</h3>
+                                  <h3 id="failed-tests">0</h3>
                                   <p>Failed</p>
                               </div>
                               <div class="stat skipped">
-                                  <h3 id="skipped-tests">-</h3>
+                                  <h3 id="skipped-tests">0</h3>
                                   <p>Skipped</p>
                               </div>
                           </div>
@@ -161,23 +164,16 @@ jobs:
                       <div class="section-content content" id="cucumber-content">
           EOF
           
-          # Add Cucumber results inline
+          # Add Cucumber results if they exist
           if [ -f "cypress/reports/cucumber-report.html" ]; then
-            # Extract just the stats and features content
-            awk '/<div class="stats">/,/<\/div>/ { 
-              if (/<div class="stats">/) print; 
-              else if (/<\/div>/ && !/stat/) print; 
-              else if (/stat/) print 
-            }' cypress/reports/cucumber-report.html >> cypress/reports/index.html
-            
-            awk '/<div class="feature">/,/<\/div>$/ { 
-              if (!/container/) print 
-            }' cypress/reports/cucumber-report.html >> cypress/reports/index.html
+            # Extract the stats and features content more safely
+            awk '/<div class="stats">/,/<\/div>/ { print }' cypress/reports/cucumber-report.html | grep -E "(stats|stat)" >> cypress/reports/index.html
+            awk '/<div class="feature">/,/<\/div>$/ { print }' cypress/reports/cucumber-report.html >> cypress/reports/index.html
           else
             echo '                <div class="no-data">No Cucumber test results found. Tests may not have run successfully.</div>' >> cypress/reports/index.html
           fi
           
-          cat >> cypress/reports/index.html << 'EOF'
+          cat >> cypress/reports/index.html << EOF
                       </div>
                   </div>
                   
@@ -200,12 +196,12 @@ jobs:
                   </div>
               </div>
               
-              <div class="timestamp">
+              <div class="timestamp" style="text-align: center; color: #6c757d; margin: 30px 0; font-style: italic; padding: 20px; background: white; border-radius: 10px;">
                   📅 Report generated on: $(date)<br>
                   🔄 Last updated: $(date '+%Y-%m-%d %H:%M:%S')
               </div>
               
-              <!-- Dialogs for each artifact type -->
+              <!-- Dialogs -->
               <dialog id="json-dialog">
                   <div class="dialog-header">
                       <span class="dialog-title">📄 JSON Reports</span>
@@ -225,18 +221,7 @@ jobs:
                   </div>
                   <div class="dialog-content">
                       <div class="iframe-container" id="mochawesome-content">
-          EOF
-          
-          # Embed Mochawesome report if it exists
-          if [ -f "cypress/reports/mochawesome-original.html" ]; then
-            echo '                <iframe srcdoc="' >> cypress/reports/index.html
-            sed 's/"/\&quot;/g' cypress/reports/mochawesome-original.html >> cypress/reports/index.html
-            echo '"></iframe>' >> cypress/reports/index.html
-          else
-            echo '                <div class="no-data">No Mochawesome report found</div>' >> cypress/reports/index.html
-          fi
-          
-          cat >> cypress/reports/index.html << 'EOF'
+                          <iframe srcdoc="${MOCHAWESOME_CONTENT}"></iframe>
                       </div>
                   </div>
               </dialog>
@@ -256,29 +241,10 @@ jobs:
                   }
                   
                   function showJsonReports() {
-          EOF
-          
-          # Add JSON content inline
-          echo '            const jsonData = `' >> cypress/reports/index.html
-          if [ -d "cypress/cucumber-json" ] && [ "$(ls -A cypress/cucumber-json 2>/dev/null)" ]; then
-            for file in cypress/cucumber-json/*.json; do
-              if [ -f "$file" ]; then
-                echo "=== $(basename "$file") ===" >> cypress/reports/index.html
-                echo "" >> cypress/reports/index.html
-                cat "$file" | jq . 2>/dev/null || cat "$file" >> cypress/reports/index.html
-                echo "" >> cypress/reports/index.html
-                echo "" >> cypress/reports/index.html
-              fi
-            done
-          else
-            echo "No JSON files found" >> cypress/reports/index.html
-          fi
-          echo '`;' >> cypress/reports/index.html
-          
-          cat >> cypress/reports/index.html << 'EOF'
-                      document.getElementById('json-content').innerHTML = `
-                          <div class="json-content">${jsonData}</div>
-                      `;
+                      const jsonData = \`${JSON_CONTENT}\`;
+                      document.getElementById('json-content').innerHTML = \`
+                          <div class="json-content">\${jsonData}</div>
+                      \`;
                       showDialog('json-dialog');
                   }
                   
@@ -301,12 +267,12 @@ jobs:
                       const passed = document.querySelectorAll('.scenario.passed').length;
                       const failed = document.querySelectorAll('.scenario.failed').length;
                       const total = scenarios.length;
-                      const skipped = 0; // Cucumber doesn't typically have skipped scenarios
+                      const skipped = 0;
                       
-                      document.getElementById('total-tests').textContent = total || '-';
-                      document.getElementById('passed-tests').textContent = passed || '-';
-                      document.getElementById('failed-tests').textContent = failed || '-';
-                      document.getElementById('skipped-tests').textContent = skipped || '-';
+                      document.getElementById('total-tests').textContent = total || '0';
+                      document.getElementById('passed-tests').textContent = passed || '0';
+                      document.getElementById('failed-tests').textContent = failed || '0';
+                      document.getElementById('skipped-tests').textContent = skipped || '0';
                   }
               </script>
           </body>
