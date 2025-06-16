@@ -1,12 +1,28 @@
-module.exports = {
+const { defineConfig } = require('cypress')
+const createBundler = require('@bahmutov/cypress-esbuild-preprocessor')
+const preprocessor = require('@badeball/cypress-cucumber-preprocessor')
+const createEsbuildPlugin = require('@badeball/cypress-cucumber-preprocessor/esbuild')
+
+module.exports = defineConfig({
   'projectId': '4b7344',
   e2e: {
     video: true,
     videosFolder: 'cypress/videos',
     screenshotsFolder: 'cypress/screenshots',
     screenshotOnRunFailure: true,
-    setupNodeEvents(on, config) {
+    specPattern: ['cypress/e2e/**/*.cy.{js,jsx,ts,tsx}', 'cypress/e2e/**/*.feature'],
+    async setupNodeEvents(on, config) {
       require('cypress-mochawesome-reporter/plugin')(on);
+      
+      await preprocessor.addCucumberPreprocessorPlugin(on, config);
+      
+      on('file:preprocessor',
+        createBundler({
+          plugins: [createEsbuildPlugin.default(config)],
+        })
+      );
+      
+      return config;
     },
     reporter: 'cypress-mochawesome-reporter',
     reporterOptions: {
@@ -18,4 +34,4 @@ module.exports = {
       saveAllAttempts: false,
     }
   },
-}
+})

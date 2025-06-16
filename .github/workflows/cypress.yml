@@ -1,4 +1,4 @@
-name: Cypress Tests
+name: Cypress Tests with Cucumber
 
 on:
   push:
@@ -27,11 +27,101 @@ jobs:
       - name: Verify Cypress execution
         run: npx cypress verify
 
-      - name: Start server and run e2e tests with reports
+      - name: Start server and run standard e2e tests
         run: npm run test:ci:report
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Cucumber/Gherkin tests
+        run: npx start-server-and-test start 8080 'npx cypress run --spec "cypress/e2e/**/*.feature" --reporter cypress-mochawesome-reporter'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Cucumber HTML report
+        run: npm run generate:cucumber-report
+        continue-on-error: true
+
+      - name: Create combined report index
+        run: |
+          mkdir -p cypress/reports
+          cat > cypress/reports/main-index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Cypress Test Reports</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
+                  .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+                  .header { text-align: center; margin-bottom: 40px; }
+                  .header h1 { color: #2c3e50; margin-bottom: 10px; }
+                  .header .subtitle { color: #7f8c8d; font-size: 18px; }
+                  .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 30px 0; }
+                  .report-card { background: #fff; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; transition: transform 0.2s, box-shadow 0.2s; }
+                  .report-card:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(0,0,0,0.15); }
+                  .report-card h3 { color: #495057; margin-bottom: 15px; display: flex; align-items: center; }
+                  .report-card h3::before { margin-right: 10px; font-size: 1.2em; }
+                  .mochawesome h3::before { content: '📊'; }
+                  .cucumber h3::before { content: '🥒'; }
+                  .artifacts h3::before { content: '📹'; }
+                  .report-link { display: inline-block; padding: 12px 24px; margin: 8px 8px 8px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; transition: all 0.3s; }
+                  .report-link:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
+                  .description { color: #6c757d; margin-bottom: 15px; line-height: 1.5; }
+                  .timestamp { text-align: center; color: #6c757d; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef; }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <div class="header">
+                      <h1>🧪 Cypress Test Reports Dashboard</h1>
+                      <div class="subtitle">Comprehensive test results and artifacts</div>
+                  </div>
+                  
+                  <div class="report-grid">
+                      <div class="report-card mochawesome">
+                          <h3>Mochawesome Reports</h3>
+                          <div class="description">Detailed test execution reports with interactive charts, screenshots, and videos from standard Cypress tests</div>
+                          <a href="index.html" class="report-link">View Standard Tests</a>
+                      </div>
+                      
+                      <div class="report-card cucumber">
+                          <h3>Cucumber/Gherkin Tests</h3>
+                          <div class="description">Behavior-driven development test results in human-readable format with step-by-step execution details</div>
+                          <a href="cucumber-report.html" class="report-link">View Cucumber Report</a>
+                      </div>
+                      
+                      <div class="report-card artifacts">
+                          <h3>Test Artifacts</h3>
+                          <div class="description">Screenshots, videos, and JSON reports from test execution for debugging and analysis</div>
+                          <a href="../screenshots/" class="report-link">Screenshots</a>
+                          <a href="../videos/" class="report-link">Videos</a>
+                          <a href="../cucumber-json/" class="report-link">JSON Reports</a>
+                      </div>
+                  </div>
+                  
+                  <div class="timestamp">
+                      Report generated on: $(date)
+                  </div>
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Create main index page
+        run: |
+          cat > cypress/reports/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta http-equiv="refresh" content="0; url=main-index.html">
+              <title>Redirecting to Test Reports...</title>
+          </head>
+          <body>
+              <p>Redirecting to <a href="main-index.html">Test Reports Dashboard</a>...</p>
+          </body>
+          </html>
+          EOF
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
@@ -57,6 +147,23 @@ jobs:
           path: cypress/reports
           retention-days: 30
 
+      - name: Upload Cucumber reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cucumber-reports
+          path: cypress/cucumber-json
+          retention-days: 30
+
+      - name: Prepare Pages content
+        run: |
+          mkdir -p pages-content
+          cp -r cypress/reports/* pages-content/ 2>/dev/null || true
+          cp -r cypress/screenshots pages-content/ 2>/dev/null || true
+          cp -r cypress/videos pages-content/ 2>/dev/null || true
+          cp -r cypress/cucumber-json pages-content/ 2>/dev/null || true
+          ls -la pages-content/
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
         if: always()
@@ -65,7 +172,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         if: always()
         with:
-          path: cypress/reports
+          path: pages-content
 
   deploy:
     if: always()

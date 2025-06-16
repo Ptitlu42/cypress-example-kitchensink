@@ -33,6 +33,10 @@
     "test:ci:record:parallel": "run-p --race start e2e:record:parallel",
     "test:ci:report": "run-p --race start e2e:report",
     "e2e:report": "cypress run --reporter cypress-mochawesome-reporter",
+    "cucumber:run": "cypress run --spec 'cypress/e2e/**/*.feature' --reporter cypress-mochawesome-reporter",
+    "test:cucumber": "start-test start 8080 cucumber:run",
+    "generate:cucumber-report": "node scripts/generate-cucumber-report.js",
+    "test:all-reports": "npm run test:ci:report && npm run test:cucumber && npm run generate:cucumber-report",
     "cy:verify": "cypress verify",
     "cy:info": "cypress info",
     "cy:version": "cypress version",
@@ -61,6 +65,8 @@
     "serve": "11.3.0"
   },
   "devDependencies": {
+    "@badeball/cypress-cucumber-preprocessor": "^20.0.2",
+    "@bahmutov/cypress-esbuild-preprocessor": "^2.2.0",
     "@bahmutov/print-env": "1.2.0",
     "colon-names": "1.0.0",
     "cypress": "^13.14.2",
@@ -80,5 +86,15 @@
   },
   "engines": {
     "node": "^14.0.0 || ^16.0.0 || >=18.0.0"
+  },
+  "cypress-cucumber-preprocessor": {
+    "nonGlobalStepDefinitions": true,
+    "stepDefinitions": "cypress/e2e/**/*.{js,ts}",
+    "cucumberJson": {
+      "generate": true,
+      "outputFolder": "cypress/cucumber-json",
+      "filePrefix": "",
+      "fileSuffix": ".cucumber"
+    }
   }
 }
