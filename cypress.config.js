@@ -4,12 +4,18 @@ module.exports = {
     video: true,
     videosFolder: 'cypress/videos',
     screenshotsFolder: 'cypress/screenshots',
-    reporter: 'mochawesome',
+    screenshotOnRunFailure: true,
+    setupNodeEvents(on, config) {
+      require('cypress-mochawesome-reporter/plugin')(on);
+    },
+    reporter: 'cypress-mochawesome-reporter',
     reporterOptions: {
-      reportDir: 'cypress/reports/mochawesome',
-      overwrite: false,
-      html: false,
-      json: true
+      reportDir: 'cypress/reports',
+      charts: true,
+      reportPageTitle: 'Cypress Tests Report',
+      embeddedScreenshots: true,
+      inlineAssets: true,
+      saveAllAttempts: false,
     }
   },
 }

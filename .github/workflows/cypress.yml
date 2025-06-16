@@ -33,14 +33,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Merge test reports
-        run: npm run report:merge
-        if: always()
-
-      - name: Generate HTML report
-        run: npm run report:generate
-        if: always()
-
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
         if: failure()
