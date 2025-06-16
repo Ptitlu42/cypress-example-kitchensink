@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: ['*']
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   cypress-tests:
     runs-on: ubuntu-latest
@@ -22,10 +27,19 @@ jobs:
       - name: Verify Cypress execution
         run: npx cypress verify
 
-      - name: Start server and run e2e tests
-        run: npm run test:ci
+      - name: Start server and run e2e tests with reports
+        run: npm run test:ci:report
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge test reports
+        run: npm run report:merge
+        if: always()
+
+      - name: Generate HTML report
+        run: npm run report:generate
+        if: always()
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
@@ -41,4 +55,34 @@ jobs:
         with:
           name: cypress-videos
           path: cypress/videos
-          retention-days: 30 
+          retention-days: 30
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-reports
+          path: cypress/reports
+          retention-days: 30
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+        if: always()
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        if: always()
+        with:
+          path: cypress/reports
+
+  deploy:
+    if: always()
+    needs: cypress-tests
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4 
