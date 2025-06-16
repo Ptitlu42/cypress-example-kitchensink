@@ -133,4 +133,25 @@ describe('example todo app', () => {
             cy.contains('Pay electric bill').should('not.exist')
         })
     })
+
+    context('with fixtures', () => {
+        beforeEach(() => {
+            cy.fixture('todos.json').as('todos')
+            cy.visit('http://localhost:8080/todo')
+        })
+
+        it('Add new items from fixtures', function() {
+            let nbTodos = 2
+            cy.wrap(this.todos)
+            .each(todo => {
+                const newItem = todo.name
+                cy.get('[data-test=new-todo]').type(`${newItem}{enter}`)
+                nbTodos = nbTodos+1
+                cy.get('.todo-list li')
+                .should('have.length', nbTodos)
+                .last()
+                .should('have.text', newItem)
+            })
+        })
+    })
 })

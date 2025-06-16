@@ -1,0 +1,10 @@
+[
+    {
+    "name": "Acheter du lait",
+    "isComplete": false
+    },
+    {
+    "name": "Acheter des oeufs",
+    "isComplete": true
+    }
+]
