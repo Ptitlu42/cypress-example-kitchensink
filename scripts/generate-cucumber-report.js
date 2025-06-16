@@ -5,8 +5,18 @@ function generateCucumberReport() {
   const cucumberJsonDir = 'cypress/cucumber-json';
   const reportsDir = 'cypress/reports';
   
+  console.log('Starting Cucumber report generation...');
+  console.log('Looking for JSON files in:', cucumberJsonDir);
+  
   if (!fs.existsSync(cucumberJsonDir)) {
-    console.log('No Cucumber JSON reports found');
+    console.log('Cucumber JSON directory does not exist, creating placeholder report');
+    if (!fs.existsSync(reportsDir)) {
+      fs.mkdirSync(reportsDir, { recursive: true });
+    }
+    
+    const placeholderHtml = generateHTML([]);
+    fs.writeFileSync(path.join(reportsDir, 'cucumber-report.html'), placeholderHtml);
+    console.log('Placeholder Cucumber HTML report generated');
     return;
   }
 
@@ -14,10 +24,14 @@ function generateCucumberReport() {
     fs.mkdirSync(reportsDir, { recursive: true });
   }
 
-  const jsonFiles = fs.readdirSync(cucumberJsonDir).filter(file => file.endsWith('.cucumber.json'));
+  const jsonFiles = fs.readdirSync(cucumberJsonDir).filter(file => file.endsWith('.cucumber.json') || file.endsWith('.json'));
+  console.log('Found JSON files:', jsonFiles);
   
   if (jsonFiles.length === 0) {
-    console.log('No Cucumber JSON files found');
+    console.log('No Cucumber JSON files found, creating placeholder report');
+    const placeholderHtml = generateHTML([]);
+    fs.writeFileSync(path.join(reportsDir, 'cucumber-report.html'), placeholderHtml);
+    console.log('Placeholder Cucumber HTML report generated');
     return;
   }
 
@@ -25,26 +39,82 @@ function generateCucumberReport() {
   
   jsonFiles.forEach(file => {
     const content = fs.readFileSync(path.join(cucumberJsonDir, file), 'utf8');
+    console.log(`Reading file: ${file}, size: ${content.length} bytes`);
     try {
       const features = JSON.parse(content);
-      allFeatures = allFeatures.concat(features);
+      if (Array.isArray(features)) {
+        allFeatures = allFeatures.concat(features);
+      } else {
+        allFeatures.push(features);
+      }
+      console.log(`Parsed ${features.length} features from ${file}`);
     } catch (error) {
       console.error(`Error parsing ${file}:`, error);
     }
   });
 
+  console.log(`Total features found: ${allFeatures.length}`);
   const html = generateHTML(allFeatures);
   fs.writeFileSync(path.join(reportsDir, 'cucumber-report.html'), html);
   console.log('Cucumber HTML report generated: cypress/reports/cucumber-report.html');
 }
 
 function generateHTML(features) {
-  const totalScenarios = features.reduce((acc, feature) => acc + feature.elements.length, 0);
+  if (!features || features.length === 0) {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cucumber Test Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin: 20px 0; }
+        .stat { text-align: center; padding: 20px; border-radius: 10px; color: white; font-weight: bold; }
+        .stat h3 { font-size: 2em; margin-bottom: 5px; }
+        .stat.total { background: #3498db; }
+        .stat.passed { background: #2ecc71; }
+        .stat.failed { background: #e74c3c; }
+        .no-data { text-align: center; color: #6c757d; padding: 40px; font-style: italic; background: #f8f9fa; border-radius: 8px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="stats">
+            <div class="stat total">
+                <h3>0</h3>
+                <p>Total Scenarios</p>
+            </div>
+            <div class="stat passed">
+                <h3>0</h3>
+                <p>Passed</p>
+            </div>
+            <div class="stat failed">
+                <h3>0</h3>
+                <p>Failed</p>
+            </div>
+        </div>
+        
+        <div class="no-data">
+            No Cucumber/Gherkin tests have been executed yet.<br>
+            Run your Cucumber tests to see results here.
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+
+  const totalScenarios = features.reduce((acc, feature) => {
+    return acc + (feature.elements ? feature.elements.length : 0);
+  }, 0);
+  
   const passedScenarios = features.reduce((acc, feature) => {
+    if (!feature.elements) return acc;
     return acc + feature.elements.filter(scenario => 
-      scenario.steps.every(step => step.result.status === 'passed')
+      scenario.steps && scenario.steps.every(step => step.result && step.result.status === 'passed')
     ).length;
   }, 0);
+  
   const failedScenarios = totalScenarios - passedScenarios;
 
   return `

@@ -108,8 +108,9 @@ jobs:
                   .content.collapsed { display: none; }
                   
                   /* Dialog styles */
-                  dialog { border: none; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-width: 90vw; max-height: 90vh; padding: 0; }
+                  dialog { border: none; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-width: 90vw; max-height: 90vh; padding: 0; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); }
                   dialog::backdrop { background: rgba(0,0,0,0.7); }
+                  dialog[open] { display: block; }
                   .dialog-header { background: #34495e; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
                   .dialog-title { font-size: 1.4em; font-weight: bold; }
                   .dialog-close { background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 1.2em; }
@@ -119,7 +120,7 @@ jobs:
                   .file-list li { padding: 10px; margin: 5px 0; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff; }
                   .file-list a { color: #007bff; text-decoration: none; }
                   .file-list a:hover { text-decoration: underline; }
-                  .json-content { background: #2d3748; color: #e2e8f0; padding: 20px; border-radius: 8px; font-family: 'Courier New', monospace; white-space: pre-wrap; }
+                  .json-content { background: #2d3748; color: #e2e8f0; padding: 20px; border-radius: 8px; font-family: 'Courier New', monospace; white-space: pre-wrap; font-size: 12px; max-height: 60vh; overflow-y: auto; }
                   .iframe-container { width: 100%; height: 80vh; }
                   .iframe-container iframe { width: 100%; height: 100%; border: none; }
               </style>
@@ -185,23 +186,13 @@ jobs:
                       <div class="section-content">
                           <div class="artifact-grid">
                               <div class="artifact-item">
-                                  <h4>📸 Screenshots</h4>
-                                  <p>Captured screenshots from failed tests</p>
-                                  <button class="artifact-link" onclick="showScreenshots()">View Screenshots</button>
-                              </div>
-                              <div class="artifact-item">
-                                  <h4>🎥 Videos</h4>
-                                  <p>Full test execution recordings</p>
-                                  <button class="artifact-link" onclick="showVideos()">Watch Videos</button>
-                              </div>
-                              <div class="artifact-item">
                                   <h4>📄 JSON Reports</h4>
                                   <p>Raw Cucumber JSON test data</p>
                                   <button class="artifact-link" onclick="showJsonReports()">View JSON Data</button>
                               </div>
                               <div class="artifact-item">
                                   <h4>📋 Mochawesome Report</h4>
-                                  <p>Standard Cypress test report</p>
+                                  <p>Complete Cypress test report with screenshots and videos</p>
                                   <button class="artifact-link" onclick="showMochawesome()">View Report</button>
                               </div>
                           </div>
@@ -215,30 +206,6 @@ jobs:
               </div>
               
               <!-- Dialogs for each artifact type -->
-              <dialog id="screenshots-dialog">
-                  <div class="dialog-header">
-                      <span class="dialog-title">📸 Test Screenshots</span>
-                      <button class="dialog-close" onclick="closeDialog('screenshots-dialog')">&times;</button>
-                  </div>
-                  <div class="dialog-content">
-                      <div id="screenshots-content">
-                          <div class="no-data">Loading screenshots...</div>
-                      </div>
-                  </div>
-              </dialog>
-              
-              <dialog id="videos-dialog">
-                  <div class="dialog-header">
-                      <span class="dialog-title">🎥 Test Videos</span>
-                      <button class="dialog-close" onclick="closeDialog('videos-dialog')">&times;</button>
-                  </div>
-                  <div class="dialog-content">
-                      <div id="videos-content">
-                          <div class="no-data">Loading videos...</div>
-                      </div>
-                  </div>
-              </dialog>
-              
               <dialog id="json-dialog">
                   <div class="dialog-header">
                       <span class="dialog-title">📄 JSON Reports</span>
@@ -262,8 +229,8 @@ jobs:
           
           # Embed Mochawesome report if it exists
           if [ -f "cypress/reports/mochawesome-original.html" ]; then
-            echo '                <iframe src="data:text/html;base64,' >> cypress/reports/index.html
-            base64 -w 0 cypress/reports/mochawesome-original.html >> cypress/reports/index.html
+            echo '                <iframe srcdoc="' >> cypress/reports/index.html
+            sed 's/"/\&quot;/g' cypress/reports/mochawesome-original.html >> cypress/reports/index.html
             echo '"></iframe>' >> cypress/reports/index.html
           else
             echo '                <div class="no-data">No Mochawesome report found</div>' >> cypress/reports/index.html
@@ -288,27 +255,6 @@ jobs:
                       document.getElementById(dialogId).close();
                   }
                   
-                  function showScreenshots() {
-                      // In a real implementation, you would fetch and display screenshots
-                      document.getElementById('screenshots-content').innerHTML = `
-                          <div class="no-data">
-                              Screenshots would be displayed here.<br>
-                              In GitHub Pages environment, files are typically in the screenshots/ directory.
-                          </div>
-                      `;
-                      showDialog('screenshots-dialog');
-                  }
-                  
-                  function showVideos() {
-                      document.getElementById('videos-content').innerHTML = `
-                          <div class="no-data">
-                              Videos would be displayed here.<br>
-                              In GitHub Pages environment, files are typically in the videos/ directory.
-                          </div>
-                      `;
-                      showDialog('videos-dialog');
-                  }
-                  
                   function showJsonReports() {
           EOF
           
@@ -318,7 +264,9 @@ jobs:
             for file in cypress/cucumber-json/*.json; do
               if [ -f "$file" ]; then
                 echo "=== $(basename "$file") ===" >> cypress/reports/index.html
-                cat "$file" >> cypress/reports/index.html
+                echo "" >> cypress/reports/index.html
+                cat "$file" | jq . 2>/dev/null || cat "$file" >> cypress/reports/index.html
+                echo "" >> cypress/reports/index.html
                 echo "" >> cypress/reports/index.html
               fi
             done
