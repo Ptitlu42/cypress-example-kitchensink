@@ -55,33 +55,30 @@ function generateHTML(features) {
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header { text-align: center; margin-bottom: 30px; }
-        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
-        .stat { text-align: center; padding: 15px; border-radius: 8px; color: white; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin: 20px 0; }
+        .stat { text-align: center; padding: 20px; border-radius: 10px; color: white; font-weight: bold; }
+        .stat h3 { font-size: 2em; margin-bottom: 5px; }
         .stat.total { background: #3498db; }
         .stat.passed { background: #2ecc71; }
         .stat.failed { background: #e74c3c; }
         .feature { margin: 20px 0; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
-        .feature-header { background: #34495e; color: white; padding: 15px; }
+        .feature-header { background: #ecf0f1; padding: 15px; font-weight: bold; color: #2c3e50; }
         .scenario { padding: 15px; border-bottom: 1px solid #eee; }
         .scenario:last-child { border-bottom: none; }
-        .scenario.passed { background: #d5f4e6; }
-        .scenario.failed { background: #fdf2f2; }
+        .scenario.passed { background: #d5f4e6; border-left: 4px solid #2ecc71; }
+        .scenario.failed { background: #fdf2f2; border-left: 4px solid #e74c3c; }
+        .scenario h4 { margin-bottom: 10px; color: #2c3e50; }
         .steps { margin: 10px 0; }
-        .step { padding: 5px 10px; margin: 2px 0; border-radius: 4px; font-family: monospace; }
-        .step.passed { background: #c8e6c9; }
-        .step.failed { background: #ffcdd2; }
-        .step.skipped { background: #fff3cd; }
-        .timestamp { color: #666; font-size: 12px; }
+        .step { padding: 8px 15px; margin: 3px 0; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 0.9em; }
+        .step.passed { background: #c8e6c9; border-left: 3px solid #2ecc71; }
+        .step.failed { background: #ffcdd2; border-left: 3px solid #e74c3c; }
+        .step.skipped { background: #fff3cd; border-left: 3px solid #f39c12; }
+        .step-keyword { font-weight: bold; color: #2c3e50; }
+        .error-message { color: #e74c3c; margin-top: 5px; font-size: 0.8em; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🥒 Cucumber Test Report</h1>
-            <div class="timestamp">Generated on: ${new Date().toLocaleString()}</div>
-        </div>
-        
         <div class="stats">
             <div class="stat total">
                 <h3>${totalScenarios}</h3>
@@ -107,8 +104,8 @@ function generateFeatureHTML(feature) {
   return `
     <div class="feature">
         <div class="feature-header">
-            <h2>${feature.name}</h2>
-            <p>${feature.description || ''}</p>
+            <h3>${feature.name}</h3>
+            ${feature.description ? `<p>${feature.description}</p>` : ''}
         </div>
         ${feature.elements.map(generateScenarioHTML).join('')}
     </div>`;
@@ -120,7 +117,7 @@ function generateScenarioHTML(scenario) {
   
   return `
     <div class="scenario ${statusClass}">
-        <h3>${scenario.name}</h3>
+        <h4>${scenario.name}</h4>
         <div class="steps">
             ${scenario.steps.map(generateStepHTML).join('')}
         </div>
@@ -130,8 +127,8 @@ function generateScenarioHTML(scenario) {
 function generateStepHTML(step) {
   return `
     <div class="step ${step.result.status}">
-        <strong>${step.keyword}</strong> ${step.name}
-        ${step.result.error_message ? `<div style="color: red; margin-top: 5px;">${step.result.error_message}</div>` : ''}
+        <span class="step-keyword">${step.keyword}</span> ${step.name}
+        ${step.result.error_message ? `<div class="error-message">${step.result.error_message}</div>` : ''}
     </div>`;
 }
 
