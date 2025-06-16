@@ -10,7 +10,7 @@ jobs:
   cypress-tests:
     runs-on: ubuntu-latest
     container:
-      image: cypress/base:10
+      image: cypress/base:18
     
     steps:
       - name: Checkout code
