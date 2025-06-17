@@ -67,8 +67,8 @@ jobs:
           echo "Creating cucumber-json directory:"
           mkdir -p cypress/cucumber-json
           
-          echo "Running Cypress with Cucumber (using configured preprocessor):"
-          npx cypress run --spec "cypress/e2e/**/*.feature" || echo "Cucumber tests execution completed with errors"
+          echo "Starting server and running Cypress with Cucumber:"
+          npx start-server-and-test start 8080 'npx cypress run --spec "cypress/e2e/**/*.feature"' || echo "Cucumber tests execution completed with errors"
           
           echo "Checking JSON results (looking for .cucumber.json files):"
           ls -la cypress/cucumber-json/ || echo "No cucumber-json directory"

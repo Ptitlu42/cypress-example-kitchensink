@@ -6,6 +6,7 @@ const createEsbuildPlugin = require('@badeball/cypress-cucumber-preprocessor/esb
 module.exports = defineConfig({
   'projectId': '4b7344',
   e2e: {
+    baseUrl: 'http://localhost:8080',
     video: true,
     videosFolder: 'cypress/videos',
     screenshotsFolder: 'cypress/screenshots',
