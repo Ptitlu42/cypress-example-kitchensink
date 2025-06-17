@@ -89,56 +89,11 @@ jobs:
 
       - name: Create simple working report
         run: |
-          echo "=== Creating comprehensive report ==="
+          echo "=== Creating simple report ==="
           mkdir -p cypress/reports
           
-          # Backup any existing Mochawesome report
-          if [ -f "cypress/reports/index.html" ]; then
-            cp cypress/reports/index.html cypress/reports/mochawesome-backup.html
-            echo "Backed up existing Mochawesome report"
-          fi
-          
-          # Collect debug information first
-          CURRENT_DIR=$(pwd)
-          CURRENT_DATE=$(date)
-          
-          # Check cypress directory
-          if [ -d "cypress" ]; then
-            CYPRESS_DIR_INFO=$(ls -la cypress/ 2>/dev/null | tr '\n' '<br>' || echo "Cypress directory exists but cannot list contents")
-          else
-            CYPRESS_DIR_INFO="No cypress directory found"
-          fi
-          
-          # Check cucumber-json directory
-          if [ -d "cypress/cucumber-json" ]; then
-            CUCUMBER_JSON_INFO=$(ls -la cypress/cucumber-json/ 2>/dev/null | tr '\n' '<br>' || echo "cucumber-json directory exists but cannot list contents")
-          else
-            CUCUMBER_JSON_INFO="No cucumber-json directory found"
-          fi
-          
-          # Check reports directory
-          if [ -d "cypress/reports" ]; then
-            REPORTS_DIR_INFO=$(ls -la cypress/reports/ 2>/dev/null | tr '\n' '<br>' || echo "reports directory exists but cannot list contents")
-          else
-            REPORTS_DIR_INFO="No reports directory found"
-          fi
-          
-          # Check for feature files
-          FEATURE_FILES=$(find . -name "*.feature" -type f 2>/dev/null | tr '\n' '<br>' || echo "No .feature files found")
-          
-          # Check for cucumber JSON files
-          CUCUMBER_JSON_FILES=$(find . -name "*.json" -path "*/cucumber*" -type f 2>/dev/null | tr '\n' '<br>' || echo "No cucumber JSON files found")
-          
-          # Get versions
-          NODE_VER=$(node --version 2>/dev/null || echo "Not available")
-          NPM_VER=$(npm --version 2>/dev/null || echo "Not available")
-          CYPRESS_VER=$(npx cypress --version 2>/dev/null || echo "Not available")
-          
-          # Check package.json for cucumber scripts
-          PACKAGE_SCRIPTS=$(grep -A 5 -B 5 cucumber package.json 2>/dev/null | tr '\n' '<br>' || echo "No cucumber scripts found")
-          
-          # Create the HTML report
-          cat > cypress/reports/index.html << 'HTMLEOF'
+          # Simple static report without complex variable substitution
+          cat > cypress/reports/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="en">
           <head>
@@ -148,170 +103,53 @@ jobs:
               <style>
                   body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
                   .header { background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-                  .header h1 { margin: 0; }
                   .section { background: white; margin: 20px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
                   .section h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-                  .debug { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
-                  .button { background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
-                  .button:hover { background: #2980b9; }
-                  .no-data { color: #7f8c8d; font-style: italic; }
-                  .success { color: #27ae60; font-weight: bold; }
-                  .error { color: #e74c3c; font-weight: bold; }
+                  .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+                  .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+                  .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+                  .button { background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; text-decoration: none; display: inline-block; }
               </style>
           </head>
           <body>
               <div class="header">
-                  <h1>🧪 Cypress Test Reports Dashboard</h1>
-                  <p id="generation-date">Generated on: Loading...</p>
+                  <h1>🧪 Cypress Test Reports</h1>
+                  <p>Test execution completed</p>
               </div>
               
               <div class="section">
-                  <h2>📊 Environment Information</h2>
-                  <div class="debug" id="env-info">Loading environment information...</div>
-              </div>
-              
-              <div class="section">
-                  <h2>🥒 Cucumber Test Results</h2>
-                  <div id="cucumber-results">
-                      <p id="cucumber-status">Checking Cucumber results...</p>
-                      <div id="cucumber-files"></div>
+                  <h2>📊 Test Results</h2>
+                  <div id="test-status">
+                      <p>Checking test results...</p>
                   </div>
               </div>
               
               <div class="section">
-                  <h2>📋 Mochawesome Report</h2>
-                  <div id="mochawesome-results">
-                      <p id="mochawesome-status">Checking Mochawesome report...</p>
+                  <h2>🔗 Available Reports</h2>
+                  <div id="reports-list">
+                      <p>Loading reports...</p>
                   </div>
               </div>
-              
-              <div class="section">
-                  <h2>🐛 Debug Information</h2>
-                  <div class="debug" id="debug-info">Loading debug information...</div>
-              </div>
-              
-              <script>
-                  // Populate with actual data
-                  document.getElementById('generation-date').textContent = 'Generated on: GENERATION_DATE_PLACEHOLDER';
-                  
-                  document.getElementById('env-info').innerHTML = `Working Directory: CURRENT_DIR_PLACEHOLDER
-          
-          Cypress Directory Structure:
-          CYPRESS_DIR_PLACEHOLDER
-          
-          Cucumber JSON Directory:
-          CUCUMBER_JSON_PLACEHOLDER
-          
-          Reports Directory:
-          REPORTS_DIR_PLACEHOLDER
-          
-          Package.json Scripts:
-          PACKAGE_SCRIPTS_PLACEHOLDER`;
-          
-                  document.getElementById('debug-info').innerHTML = `File System Check:
-          FEATURE_FILES_PLACEHOLDER
-          
-          Cucumber JSON Files:
-          CUCUMBER_JSON_FILES_PLACEHOLDER
-          
-          Environment Variables:
-          NODE_VERSION: NODE_VER_PLACEHOLDER
-          NPM_VERSION: NPM_VER_PLACEHOLDER  
-          CYPRESS_VERSION: CYPRESS_VER_PLACEHOLDER
-          
-          Current Build Step Results:
-          BUILD_RESULTS_PLACEHOLDER`;
-                  
-                  function showCucumberReport() {
-                      window.open('cucumber-report.html', '_blank');
-                  }
-                  
-                  function showMochawesome() {
-                      window.open('mochawesome-backup.html', '_blank');
-                  }
-                  
-                  function showJsonData() {
-                      alert('JSON files are available in the cucumber-json directory. Check the debug section for file details.');
-                  }
-              </script>
           </body>
           </html>
-          HTMLEOF
+          EOF
           
-          # Now replace placeholders with actual values
-          sed -i "s|GENERATION_DATE_PLACEHOLDER|${CURRENT_DATE}|g" cypress/reports/index.html
-          sed -i "s|CURRENT_DIR_PLACEHOLDER|${CURRENT_DIR}|g" cypress/reports/index.html
-          sed -i "s|CYPRESS_DIR_PLACEHOLDER|${CYPRESS_DIR_INFO}|g" cypress/reports/index.html
-          sed -i "s|CUCUMBER_JSON_PLACEHOLDER|${CUCUMBER_JSON_INFO}|g" cypress/reports/index.html
-          sed -i "s|REPORTS_DIR_PLACEHOLDER|${REPORTS_DIR_INFO}|g" cypress/reports/index.html
-          sed -i "s|PACKAGE_SCRIPTS_PLACEHOLDER|${PACKAGE_SCRIPTS}|g" cypress/reports/index.html
-          sed -i "s|FEATURE_FILES_PLACEHOLDER|${FEATURE_FILES}|g" cypress/reports/index.html
-          sed -i "s|CUCUMBER_JSON_FILES_PLACEHOLDER|${CUCUMBER_JSON_FILES}|g" cypress/reports/index.html
-          sed -i "s|NODE_VER_PLACEHOLDER|${NODE_VER}|g" cypress/reports/index.html
-          sed -i "s|NPM_VER_PLACEHOLDER|${NPM_VER}|g" cypress/reports/index.html
-          sed -i "s|CYPRESS_VER_PLACEHOLDER|${CYPRESS_VER}|g" cypress/reports/index.html
+          echo "Basic report created successfully"
           
-          # Check build results and update status
-          BUILD_RESULTS=""
-          if [ -f "cypress/reports/mochawesome-backup.html" ]; then
-            BUILD_RESULTS="${BUILD_RESULTS}- Standard e2e tests: ✅ Completed<br>"
-          else
-            BUILD_RESULTS="${BUILD_RESULTS}- Standard e2e tests: ❌ Not found<br>"
-          fi
-          
-          if [ -d "cypress/cucumber-json" ]; then
-            BUILD_RESULTS="${BUILD_RESULTS}- Cucumber tests: ✅ Directory created<br>"
-          else
-            BUILD_RESULTS="${BUILD_RESULTS}- Cucumber tests: ❌ Directory missing<br>"
+          # Check what we have and add status
+          if [ -f "cypress/reports/mochawesome.html" ]; then
+            echo "✅ Mochawesome report found"
           fi
           
           if [ -f "cypress/reports/cucumber-report.html" ]; then
-            BUILD_RESULTS="${BUILD_RESULTS}- Cucumber HTML report: ✅ Generated"
-          else
-            BUILD_RESULTS="${BUILD_RESULTS}- Cucumber HTML report: ❌ Not generated"
+            echo "✅ Cucumber report found"
           fi
           
-          sed -i "s|BUILD_RESULTS_PLACEHOLDER|${BUILD_RESULTS}|g" cypress/reports/index.html
-          
-          # Update cucumber status dynamically
-          if [ -f "cypress/reports/cucumber-report.html" ]; then
-            sed -i 's|<p id="cucumber-status">.*</p>|<p class="success">✅ Cucumber HTML report found</p><button class="button" onclick="showCucumberReport()">View Cucumber Report</button>|' cypress/reports/index.html
-          else
-            sed -i 's|<p id="cucumber-status">.*</p>|<p class="error">❌ No Cucumber HTML report found</p>|' cypress/reports/index.html
-          fi
-          
-          # Check for JSON files and update
           if [ -d "cypress/cucumber-json" ] && [ "$(ls -A cypress/cucumber-json 2>/dev/null)" ]; then
-            JSON_LIST=""
-            for file in cypress/cucumber-json/*.json; do
-              if [ -f "$file" ]; then
-                file_size=$(wc -c < "$file")
-                JSON_LIST="${JSON_LIST}<li>$(basename "$file") (${file_size} bytes)</li>"
-              fi
-            done
-            sed -i "s|<div id=\"cucumber-files\"></div>|<p class=\"success\">✅ Cucumber JSON files found:</p><ul>${JSON_LIST}</ul><button class=\"button\" onclick=\"showJsonData()\">View JSON Data</button>|" cypress/reports/index.html
-          else
-            sed -i 's|<div id="cucumber-files"></div>|<p class="error">❌ No Cucumber JSON files found</p>|' cypress/reports/index.html
+            echo "✅ Cucumber JSON files found"
           fi
           
-          # Update mochawesome status
-          if [ -f "cypress/reports/mochawesome-backup.html" ]; then
-            sed -i 's|<p id="mochawesome-status">.*</p>|<p class="success">✅ Mochawesome report available</p><button class="button" onclick="showMochawesome()">View Mochawesome Report</button>|' cypress/reports/index.html
-          else
-            sed -i 's|<p id="mochawesome-status">.*</p>|<p class="error">❌ No Mochawesome report found</p>|' cypress/reports/index.html
-          fi
-          
-          echo "=== Report creation completed ==="
-          echo "Generated report contents:"
-          ls -la cypress/reports/
-          
-          echo "=== Final debug check ==="
-          echo "Feature files found:"
-          find . -name "*.feature" -type f 2>/dev/null || echo "No feature files"
-          echo "Cucumber JSON directory contents:"
-          ls -la cypress/cucumber-json/ 2>/dev/null || echo "Directory does not exist"
-          echo "Reports directory contents:"
-          ls -la cypress/reports/ 2>/dev/null || echo "Directory does not exist"
+          echo "Report creation completed"
 
       - name: Remove intermediate step
         run: echo "Single page report created successfully"
@@ -350,11 +188,34 @@ jobs:
 
       - name: Prepare Pages content
         run: |
+          echo "=== Preparing Pages content ==="
           mkdir -p pages-content
-          cp -r cypress/reports/* pages-content/ 2>/dev/null || true
-          cp -r cypress/screenshots pages-content/ 2>/dev/null || true
-          cp -r cypress/videos pages-content/ 2>/dev/null || true
-          cp -r cypress/cucumber-json pages-content/ 2>/dev/null || true
+          
+          # Ensure we have at least the main report
+          if [ -f "cypress/reports/index.html" ]; then
+            cp cypress/reports/index.html pages-content/
+            echo "✅ Main report copied"
+          else
+            echo "❌ No main report found, creating basic one"
+            cat > pages-content/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>Test Reports</title></head>
+          <body>
+            <h1>Cypress Tests</h1>
+            <p>Test execution completed but no detailed reports were generated.</p>
+          </body>
+          </html>
+          EOF
+          fi
+          
+          # Copy other reports if they exist
+          cp -r cypress/reports/* pages-content/ 2>/dev/null || echo "No additional reports to copy"
+          cp -r cypress/screenshots pages-content/ 2>/dev/null || echo "No screenshots to copy"
+          cp -r cypress/videos pages-content/ 2>/dev/null || echo "No videos to copy"
+          cp -r cypress/cucumber-json pages-content/ 2>/dev/null || echo "No cucumber JSON to copy"
+          
+          echo "Pages content prepared:"
           ls -la pages-content/
 
       - name: Setup Pages
