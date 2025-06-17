@@ -136,13 +136,12 @@ jobs:
             done
           fi
           
-          # Create the complete static HTML report
-          cat > cypress/reports/index.html << EOF
-          <!DOCTYPE html>
-          <html lang="en">
+          # Create the HTML content first
+          HTML_CONTENT="<!DOCTYPE html>
+          <html lang=\"en\">
           <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <meta charset=\"UTF-8\">
+              <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
               <title>Cypress Test Reports</title>
               <style>
                   body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
@@ -168,78 +167,73 @@ jobs:
               </style>
           </head>
           <body>
-              <div class="header">
+              <div class=\"header\">
                   <h1>🧪 Cypress Test Reports</h1>
                   <p>Test execution results</p>
               </div>
               
-              <!-- Cypress Stats -->
-              <div class="section">
+              <div class=\"section\">
                   <h2>📊 Cypress Tests</h2>
-                  <div class="stats">
-                      <div class="stat total">
+                  <div class=\"stats\">
+                      <div class=\"stat total\">
                           <h3>$CYPRESS_TOTAL</h3>
                           <p>Total</p>
                       </div>
-                      <div class="stat passed">
+                      <div class=\"stat passed\">
                           <h3>$CYPRESS_PASSED</h3>
                           <p>Passed</p>
                       </div>
-                      <div class="stat failed">
+                      <div class=\"stat failed\">
                           <h3>$CYPRESS_FAILED</h3>
                           <p>Failed</p>
                       </div>
                   </div>
               </div>
               
-              <!-- Cucumber Stats -->
-              <div class="section">
+              <div class=\"section\">
                   <h2>🥒 Cucumber Tests</h2>
-                  <div class="stats">
-                      <div class="stat total">
+                  <div class=\"stats\">
+                      <div class=\"stat total\">
                           <h3>$CUCUMBER_SCENARIOS</h3>
                           <p>Scenarios</p>
                       </div>
-                      <div class="stat passed">
+                      <div class=\"stat passed\">
                           <h3>$CUCUMBER_PASSED</h3>
                           <p>Passed</p>
                       </div>
-                      <div class="stat failed">
+                      <div class=\"stat failed\">
                           <h3>$CUCUMBER_FAILED</h3>
                           <p>Failed</p>
                       </div>
                   </div>
                   
-                  <button class="button" onclick="showCucumberDetails()">View details</button>
+                  <button class=\"button\" onclick=\"showCucumberDetails()\">View details</button>
               </div>
               
-              <!-- Actions -->
-              <div class="section">
+              <div class=\"section\">
                   <h2>🔗 Actions</h2>
-                  <button class="button" onclick="showDebugInfo()">Debug information</button>
+                  <button class=\"button\" onclick=\"showDebugInfo()\">Debug information</button>
               </div>
               
-              <!-- Cucumber Details Modal -->
-              <div id="cucumberModal" class="modal">
-                  <div class="modal-content">
-                      <span class="close" onclick="closeCucumberModal()">&times;</span>
+              <div id=\"cucumberModal\" class=\"modal\">
+                  <div class=\"modal-content\">
+                      <span class=\"close\" onclick=\"closeCucumberModal()\">&times;</span>
                       <h2>Cucumber Scenarios Details</h2>
-                      <div id="cucumber-details">
+                      <div id=\"cucumber-details\">
                           $CUCUMBER_DETAILS
                       </div>
                   </div>
               </div>
               
-              <!-- Debug Modal -->
-              <div id="debugModal" class="modal">
-                  <div class="modal-content">
-                      <span class="close" onclick="closeDebugModal()">&times;</span>
+              <div id=\"debugModal\" class=\"modal\">
+                  <div class=\"modal-content\">
+                      <span class=\"close\" onclick=\"closeDebugModal()\">&times;</span>
                       <h2>Debug Information</h2>
-                      <div style="font-family: monospace; background: #f8f9fa; padding: 15px; border-radius: 5px;">
+                      <div style=\"font-family: monospace; background: #f8f9fa; padding: 15px; border-radius: 5px;\">
                           Working directory: $(pwd)<br>
                           Generation date: $(date)<br>
-                          Feature files found: $(find . -name "*.feature" | wc -l)<br>
-                          Cucumber JSON files: $(find cypress/cucumber-json -name "*.json" 2>/dev/null | wc -l || echo "0")<br>
+                          Feature files found: $(find . -name \"*.feature\" | wc -l)<br>
+                          Cucumber JSON files: $(find cypress/cucumber-json -name \"*.json\" 2>/dev/null | wc -l || echo \"0\")<br>
                           Directories created: cypress/reports, cypress/cucumber-json
                       </div>
                   </div>
@@ -262,7 +256,6 @@ jobs:
                       document.getElementById('debugModal').style.display = 'none';
                   }
                   
-                  // Close modals when clicking outside
                   window.onclick = function(event) {
                       var cucumberModal = document.getElementById('cucumberModal');
                       var debugModal = document.getElementById('debugModal');
@@ -275,12 +268,14 @@ jobs:
                   }
               </script>
           </body>
-          </html>
-          EOF
+          </html>"
           
-          echo "✅ Page statique complète créée avec résultats intégrés"
-          echo "Stats Cypress: Total=$CYPRESS_TOTAL, Passed=$CYPRESS_PASSED, Failed=$CYPRESS_FAILED"
-          echo "Stats Cucumber: Total=$CUCUMBER_SCENARIOS, Passed=$CUCUMBER_PASSED, Failed=$CUCUMBER_FAILED"
+          # Write the HTML content to file
+          echo "$HTML_CONTENT" > cypress/reports/index.html
+          
+          echo "✅ Static page created with embedded results"
+          echo "Stats - Cypress: Total=$CYPRESS_TOTAL, Passed=$CYPRESS_PASSED, Failed=$CYPRESS_FAILED"
+          echo "Stats - Cucumber: Total=$CUCUMBER_SCENARIOS, Passed=$CUCUMBER_PASSED, Failed=$CUCUMBER_FAILED"
 
       - name: Remove intermediate step
         run: echo "Single page report created successfully"
