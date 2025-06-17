@@ -33,6 +33,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Debug generated files
+        run: |
+          echo "=== Debug: Files generated after Cypress tests ==="
+          echo "Full cypress directory tree:"
+          find cypress -type f | sort || echo "No cypress directory"
+          
+          echo "=== Looking specifically for HTML reports ==="
+          find . -name "*.html" -type f | grep -E "(cypress|mochawesome|report)" || echo "No HTML reports found"
+          
+          echo "=== Contents of cypress/reports if it exists ==="
+          if [ -d cypress/reports ]; then
+            ls -la cypress/reports/
+            echo "File details:"
+            for file in cypress/reports/*; do
+              if [ -f "$file" ]; then
+                echo "File: $file ($(wc -l < "$file") lines)"
+              fi
+            done
+          else
+            echo "cypress/reports directory does not exist"
+          fi
+
       - name: Run Cucumber/Gherkin tests
         run: |
           echo "=== Running Cucumber tests ==="
@@ -92,28 +114,44 @@ jobs:
           echo "=== Creating merged report ==="
           mkdir -p cypress/reports
           
-          # Simple stats from file counts
-          CYPRESS_TOTAL="N/A"
-          CYPRESS_PASSED="N/A" 
-          CYPRESS_FAILED="N/A"
-          CUCUMBER_TOTAL="N/A"
+          echo "=== Checking what files were generated ==="
+          echo "All cypress directory contents:"
+          find cypress -type f -name "*.html" || echo "No HTML files found"
+          find cypress -type f -name "*.json" || echo "No JSON files found"
           
-          # Check if reports exist
+          echo "Reports directory:"
+          ls -la cypress/reports/ || echo "No reports directory"
+          
+          # Check if reports exist and copy with correct names
           CYPRESS_REPORT=""
           CUCUMBER_REPORT=""
           
+          # Look for any mochawesome HTML files
           if [ -f "cypress/reports/mochawesome.html" ]; then
+            echo "✅ Found mochawesome.html"
             CYPRESS_REPORT="<iframe src='mochawesome.html' width='100%' height='600px' style='border:1px solid #ddd; border-radius:5px;'></iframe>"
           elif [ -f "cypress/reports/index.html" ]; then
-            CYPRESS_REPORT="<iframe src='mochawesome.html' width='100%' height='600px' style='border:1px solid #ddd; border-radius:5px;'></iframe>"
+            echo "✅ Found index.html in reports - copying as mochawesome.html"
             cp cypress/reports/index.html cypress/reports/mochawesome.html
+            CYPRESS_REPORT="<iframe src='mochawesome.html' width='100%' height='600px' style='border:1px solid #ddd; border-radius:5px;'></iframe>"
           else
-            CYPRESS_REPORT="<p class='no-report'>No Cypress report available</p>"
+            # Look for any HTML file in reports
+            FIRST_HTML=$(find cypress/reports -name "*.html" -type f | head -1)
+            if [ -n "$FIRST_HTML" ]; then
+              echo "✅ Found HTML report: $FIRST_HTML"
+              cp "$FIRST_HTML" cypress/reports/mochawesome.html
+              CYPRESS_REPORT="<iframe src='mochawesome.html' width='100%' height='600px' style='border:1px solid #ddd; border-radius:5px;'></iframe>"
+            else
+              echo "❌ No Cypress HTML report found"
+              CYPRESS_REPORT="<p class='no-report'>No Cypress report available</p>"
+            fi
           fi
           
           if [ -f "cypress/reports/cucumber-report.html" ]; then
+            echo "✅ Found cucumber-report.html"
             CUCUMBER_REPORT="<iframe src='cucumber-report.html' width='100%' height='600px' style='border:1px solid #ddd; border-radius:5px;'></iframe>"
           else
+            echo "❌ No Cucumber HTML report found"
             CUCUMBER_REPORT="<p class='no-report'>No Cucumber report available</p>"
           fi
           
@@ -232,7 +270,7 @@ jobs:
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
           name: cypress-screenshots
           path: cypress/screenshots
