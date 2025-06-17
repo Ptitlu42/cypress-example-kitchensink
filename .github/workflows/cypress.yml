@@ -39,12 +39,34 @@ jobs:
           echo "Looking for feature files:"
           find cypress/e2e -name "*.feature" -type f || echo "No .feature files found"
           
-          echo "Running Cypress with Cucumber:"
-          npx cypress run --spec "cypress/e2e/**/*.feature" --reporter cypress-mochawesome-reporter --reporter-options reportDir=cypress/cucumber-json,reportFilename=cucumber-results.json || echo "Cucumber tests execution completed with errors"
+          echo "Looking for step definitions:"
+          find cypress/e2e -name "*step*.js" -type f || echo "No step definition files found"
           
-          echo "Checking results:"
-          ls -la cypress/ || echo "No cypress directory"
+          echo "Creating cucumber-json directory:"
+          mkdir -p cypress/cucumber-json
+          
+          echo "Running Cypress with Cucumber (using configured preprocessor):"
+          npx cypress run --spec "cypress/e2e/**/*.feature" || echo "Cucumber tests execution completed with errors"
+          
+          echo "Checking JSON results (looking for .cucumber.json files):"
           ls -la cypress/cucumber-json/ || echo "No cucumber-json directory"
+          find cypress/cucumber-json -name "*.cucumber.json" 2>/dev/null || echo "No .cucumber.json files found"
+          
+          echo "JSON file contents (if any):"
+          for file in cypress/cucumber-json/*.cucumber.json; do
+            if [ -f "$file" ]; then
+              echo "=== Content of $file ==="
+              head -10 "$file" || echo "Cannot read file"
+            fi
+          done
+          
+          echo "Also checking for any JSON files:"
+          for file in cypress/cucumber-json/*.json; do
+            if [ -f "$file" ]; then
+              echo "=== Content of $file ==="
+              head -10 "$file" || echo "Cannot read file"
+            fi
+          done
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
